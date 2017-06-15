@@ -61,10 +61,15 @@ var utils = {
   },
 
   /**
+   * @typedef {Object} loader
+   * @property {Function} staticLoadIfNotDev
+   * @property {function():Array<Promise>} dynamicLoadIfDev
+   */
+  /**
    * Runs
    * @param {boolean} isDev True loads via filesystem
    * @param {Object} pathList Associative array (moduleNames, path to module)
-   * @returns {Object} returns a copy of {pathList} but with the values
+   * @returns {loader} returns a copy of {pathList} but with the values
    * replaced by the imported versions of each file
    */
   conditionalLoader: function (isDev, pathList) {
@@ -83,10 +88,10 @@ var utils = {
 
     code.staticLoadIfNotDev = function () { // Doesn't clash with namespace
       delete code.staticLoadIfNotDev; // because we delete
-      staticLoadIfNotDev(isDev, code, pathList);
+      staticLoad(isDev, code, pathList);
     };
     code[dynamic] = function () {
-      return dynamicLoadIfDev(isDev, code, pathList);
+      return dyanmicLoad(isDev, code, pathList);
     };
     return code;
   },
@@ -147,7 +152,7 @@ function fitIntoLimit(lines, text) {
   return lines;
 }
 
-function staticLoadIfNotDev(isDev, codeContainer, path) {
+function staticLoad(isDev, codeContainer, path) {
   if (!isDev) {
     Object.keys(path).forEach(function (moduleName) {
       codeContainer[moduleName] = require(path[moduleName]);
@@ -155,7 +160,7 @@ function staticLoadIfNotDev(isDev, codeContainer, path) {
   }
 }
 
-function dynamicLoadIfDev(isDev, codeContainer, path) {
+function dyanmicLoad(isDev, codeContainer, path) {
   return(isDev
     ? Object.keys(path).map(
       function (modName) {
