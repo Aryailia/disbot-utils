@@ -18,7 +18,7 @@ var utils = {
     if (typeof seperator == 'undefined') {
       separator = SPACE;
     }
-    return new RegExp('^' + prefix + '(\\S+)' + separator + '*([\\S\\s]+)?$');
+    return new RegExp('^' + prefix + '(\\S+)' + separator + '+([\\S\\s]+)?$');
   },
 
   /**
