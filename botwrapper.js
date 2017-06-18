@@ -1,4 +1,4 @@
-var fs = require('fs');
+var nodePath = require('path');
 var SPACE = '[' + [
   ' ', // U+0020, regular space
   '\t', // Tab
@@ -18,7 +18,7 @@ var utils = {
     if (typeof seperator == 'undefined') {
       separator = SPACE;
     }
-    return new RegExp('^' + prefix + '(\\S+)' + separator + '+([\\S\\s]+)?$');
+    return new RegExp('^'+prefix+'(\\S+)(?:'+separator+'*([\\S\\s]+))?$');
   },
 
   /**
@@ -91,7 +91,7 @@ var utils = {
       staticLoad(isDev, code, pathList);
     };
     code[dynamic] = function () {
-      return dyanmicLoad(isDev, code, pathList);
+      dyanmicLoad(isDev, code, pathList);
     };
     return code;
   },
@@ -161,31 +161,64 @@ function staticLoad(isDev, codeContainer, path) {
 }
 
 function dyanmicLoad(isDev, codeContainer, path) {
-  return(isDev
-    ? Object.keys(path).map(
-      function (modName) {
-        var load = {};
-        var loadPromise = new Promise(function (resolve, reject) {
-          load.resolve = resolve;
-          load.reject  = reject;
-        });
+  if (isDev) {
+    // Delete cache each time to prevent collisions (I think) in cache
+    // Sometimes after successsive executions of dynamicLoad(), non-native
+    // modules loaded via require() would register retrieve a different module
+    // from cache, usually after two executions of dynamicLoad() in a loop.
+    Object.keys(require.cache).forEach(function (key) {
+      // Doesn't seem like I can delete native modules from require.cache
+      // so don't need all these garbage, but saves memory?
+      if (key.startsWith(nodePath.resolve('.'))) {
+        delete require.cache[key];
+      }
+    });
+    Object.keys(path).forEach(function (modName) {
+      codeContainer[modName] = require(path[modName]);
+    });
+  }
+}
 
-        fs.readFile(path[modName], 'utf8', function (err, data) {
-          if (err) {
-            load.reject(err); // Load fail
-          } else {
-            try { // Test any problems in code
-              codeContainer[modName] = eval(data);
-              load.resolve(); // And signal commands loaded
-            } catch (e) { // Fail if there are any
-              load.reject(e); // Load fail
-            }
+/*function dyanmicLoad(isDev, codeContainer, path) {
+  // Delete cache each time to prevent collisions (I think) in cache
+  // Sometimes after successsive executions of dynamicLoad(), non-native
+  // modules loaded via require() would register retrieve a different module
+  // from cache, usually after two executions of dynamicLoad() in a loop.
+
+  // Not even sure this step is necessary anymore since it works without
+  // clearing the cache always, not sure what problem i was encountering before
+  //Object.keys(require.cache).forEach(function (key) {
+    // Doesn't seem like I can delete native modules from require.cache
+    // so don't need all these garbage
+
+    //if (key.startsWith(nodePath.resolve('.'))) {
+  //  delete require.cache[key];
+    //}
+  //});
+
+  return(isDev
+    ? Object.keys(path).map(function (modName) {
+      var load = {};
+      var loadPromise = new Promise(function (resolve, reject) {
+        load.resolve = resolve;
+        load.reject  = reject;
+      });
+
+      fs.readFile(path[modName], 'utf8', function (err, data) {
+        if (err) {
+          load.reject(err); // Load fail
+        } else {
+          try { // Test any problems in code
+            codeContainer[modName] = eval('(function(){eval(data)}());');
+            load.resolve(); // And signal commands loaded
+          } catch (e) { // Fail if there are any
+            load.reject(e); // Load fail
           }
-        });
-        return loadPromise;
-      })
+        }
+      });
+      return loadPromise; })
     : [Promise.resolve()]
   );
-}
+}*/
 
 module.exports = utils;
