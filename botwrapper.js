@@ -31,9 +31,13 @@ var utils = {
    * Buffer size limit provided by {DISCORD_MESSAGE_LIMIT}
    * 
    * @param {Array<string>} messageList Output
-   * @param {Function(string)} sender Outputs to your
+   * @param {object} channel Channel with send method, has to be channel
+   * otherwise will run into problems with the channel calling {this}
    */
-  massMessage: function (messageList, sender) {
+  massMessage: function (messageList, channel) {
+    if (typeof messageList !== 'object' || !messageList.hasOwnProperty('length')) {
+      throw new SyntaxError('Error: massMessage - expects an Array for {messageList}');
+    }
     messageList
       // Refine list separation to prioritize messageList boundaries but fit into limit
       .reduce(fitIntoLimit, [{ size: 0, buffer: []}]) // Combine what will fit into a limit
@@ -54,7 +58,7 @@ var utils = {
         var index = 0;
         var length = message.length;
         while (index < length) { // Not guarenteed to be under limit still
-          sender(message.substr(index, DISCORD_MESSAGE_LIMIT));
+          channel.send(message.substr(index, DISCORD_MESSAGE_LIMIT));
           index += DISCORD_MESSAGE_LIMIT;
         }
       });
