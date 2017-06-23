@@ -117,7 +117,7 @@ var utils = {
    * @param {Object} overwrites The values to overwrite with
    * @returns {Object}
    */
-  imposeKeyValueStructure: function (outlineDefaults, overwrites) {
+  strictDefaults: function (outlineDefaults, overwrites) {
     var toAdd = overwrites == undefined ? {} : overwrites;
     var obj = Object.create(null);
     // If I want to change to non-mutating
