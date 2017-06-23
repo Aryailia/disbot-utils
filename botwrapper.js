@@ -65,14 +65,14 @@ var utils = {
   },
 
   /**
-   * @typedef {Object} loader
+   * @typedef {object} loader
    * @property {Function} staticLoadIfNotDev
    * @property {function():Array<Promise>} dynamicLoadIfDev
    */
   /**
    * Runs
    * @param {boolean} isDev True loads via filesystem
-   * @param {Object} pathList Associative array (moduleNames, path to module)
+   * @param {object} pathList Associative array (moduleNames, path to module)
    * @returns {loader} returns a copy of {pathList} but with the values
    * replaced by the imported versions of each file
    */
@@ -113,9 +113,9 @@ var utils = {
    * ({a: '', b: ['!']}, {c: 5}) => SyntaxError
    * 
    * 
-   * @param {Object} outlineDefaults The structure outline and defaults
-   * @param {Object} overwrites The values to overwrite with
-   * @returns {Object}
+   * @param {object} outlineDefaults The structure outline and defaults
+   * @param {object} overwrites The values to overwrite with
+   * @returns {object}
    */
   strictDefaults: function (outlineDefaults, overwrites) {
     var toAdd = overwrites == undefined ? {} : overwrites;
