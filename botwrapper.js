@@ -118,27 +118,28 @@ var utils = {
    * @returns {Object}
    */
   imposeKeyValueStructure: function (outlineDefaults, overwrites) {
+    var toAdd = overwrites == undefined ? {} : overwrites;
     var obj = Object.create(null);
     // If I want to change to non-mutating
     //var check = Object.create(null); // To see if {overwrites} has extra keys
     //Object.keys(overwrites).forEach(function (key) { check[key] = true; });
     Object.keys(outlineDefaults).forEach(function (key) {
-      var toAdd = overwrites.hasOwnProperty(key)
-        ? overwrites[key]
+      var base = toAdd.hasOwnProperty(key)
+        ? toAdd[key]
         : outlineDefaults[key];
       // Shallow copies any entries
       // Note tha
-      obj[key] = typeof toAdd === 'object'
-        ? Object.assign(toAdd.constructor(), overwrites) // One-level deep clone
-        : toAdd; // Or just straight copy
+      obj[key] = typeof base === 'object'
+        ? Object.assign(base.constructor(), toAdd[key]) // One-level deep clone
+        : base; // Or just straight copy
       //delete check[key]; // If I want to change to non-mutating
-      delete overwrites[key];
+      delete toAdd[key];
     });
 
     // See if any un-copied properties are left over
     //if (Object.keys(check).length > 0) { // If I want to change to non-mutating
-    if (Object.keys(overwrites).length > 0) {
-      throw new Error('{overwrites} passed with invalid arguments' + overwrites);
+    if (Object.keys(toAdd).length > 0) {
+      throw new Error('{overwrites} passed with invalid arguments' + toAdd);
     }
     return obj;
   },
