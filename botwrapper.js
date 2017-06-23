@@ -96,21 +96,23 @@ var utils = {
   
   /**
    * @param {CommandStructure} CommandStructure
+   * @param {object} CommandStructure.tags
+   * @param {object} CommandStructure.commands
+   * @param {object} CommandStructure.help
    * @param {string} name
    * @param {Array<string>} tagList
+   * @param {string} format
    * @param {string} summary
    * @param {string} details
    * @param {function:void} fn
    */
-  addCommand: function(CommandStructure, name, tagList, summary, details, fn) {
+  addCommand: function(CommandStructure, name, tagList, format, summary, details, fn) {
     tagList.forEach(function (tag) {
       if (!CommandStructure.tags.hasOwnProperty(tag)) {
-        CommandStructure.tags = [];
+        CommandStructure.tags[tag] = [];
       }
       CommandStructure.tags[tag].push(name);
     });
-    console.log(arguments);
-    console.log(tagList);
 
     if (CommandStructure.help.hasOwnProperty(name) ||
         CommandStructure.commands.hasOwnProperty(name)) {
@@ -119,33 +121,55 @@ var utils = {
     }
     CommandStructure.help[name] = {
       summary: summary,
-      format:  '',
+      format:  format,
       details: details,
     };
     CommandStructure.commands[name] = fn;
   },
 
-  makeDefaultHelpCommand: function (CommandStructure) {
+  /**
+   * @param {CommandStructure} CommandStructure
+   * @param {object} CommandStructure.tags
+   * @param {object} CommandStructure.commands
+   * @param {object} CommandStructure.help
+   * @param {boolean} strict
+   */
+  makeDefaultHelpCommand: function (CommandStructure, strict) {
     return function (text, message) {
-      var strList = [];
       var help = CommandStructure.help;
+      var tagList = CommandStructure.tags;
+      var strList = [];
+      var commandList = {};
+
       if (help.hasOwnProperty(text)) {
-        strList.push('**' + text + '**\n' +
-          help[text].summary + '\n' +
+        strList.push('**' + text + '**' + help[text].format + '\n' +
           help[text].details);
       } else {
         Object.keys(help).forEach(function (command) {
-          strList.push('**' + command + '** - ' + help[command].summary + '\n');
+          commandList[command] = true;
         });
+        (Object.keys(CommandStructure.tags)
+          .sort(function (tag1, tag2) {
+            return tag1.length < tag2.length;
+          }).forEach(function (tag) {
+            // If commandList still has one of the commands
+            if (tagList[tag].some(function (x) { return commandList[x]; })) {
+              strList.push('**' + tag + '**\n');
+              tagList[tag].forEach(function (command) { 
+                if (strict) {
+                  delete commandList[command];
+                }
+                console.log(commandList);
+                strList.push('**' + command + '** - ' + help[command].summary + '\n');
+              });
+              strList.push('\n');
+            }
+          })
+        );
       }
       utils.massMessage(strList, message.channel);
     };
   },
-
-  helpCommand: function () {
-  },
-
-
 
   /**
    * @typedef {object} loader
