@@ -31,7 +31,7 @@ var utils = {
    * Buffer size limit provided by {DISCORD_MESSAGE_LIMIT}
    * 
    * @param {Array<string>} messageList Output
-   * @param {object} channel Channel with send method, has to be channel
+   * @param {TextChannel} channel Channel with send method, has to be channel
    * otherwise will run into problems with the channel calling {this}
    */
   massMessage: function (messageList, channel) {
@@ -63,6 +63,89 @@ var utils = {
         }
       });
   },
+
+
+  /**
+   * @typedef {object} CommandStructure
+   * @property {object} commands
+   * @property {object} help
+   * @property {function(string, Array<string>, string, string, function)} addCommand
+   */
+  /**
+   * @param {function(string, CommandStructure):boolean} runBeforeCommands IF
+   * true, will continue to run the command. Run before every command
+   * @returns {CommandStructure}
+   */
+  setupCommand: function (runBeforeCommands) {
+    var setup = runBeforeCommands == undefined
+      ? function () { return true; }
+      : runBeforeCommands;
+    var CommandStructure = {
+      tags: {},
+      commands: {},
+      help: {},
+      addCommand: function (name) {
+        if (setup(CommandStructure, name)) {
+          utils.addCommand.apply(null, [CommandStructure].concat(
+            Array.prototype.slice.call(arguments)));
+        }
+      },
+    };
+    return CommandStructure;
+  },
+  
+  /**
+   * @param {CommandStructure} CommandStructure
+   * @param {string} name
+   * @param {Array<string>} tagList
+   * @param {string} summary
+   * @param {string} details
+   * @param {function:void} fn
+   */
+  addCommand: function(CommandStructure, name, tagList, summary, details, fn) {
+    tagList.forEach(function (tag) {
+      if (!CommandStructure.tags.hasOwnProperty(tag)) {
+        CommandStructure.tags = [];
+      }
+      CommandStructure.tags[tag].push(name);
+    });
+    console.log(arguments);
+    console.log(tagList);
+
+    if (CommandStructure.help.hasOwnProperty(name) ||
+        CommandStructure.commands.hasOwnProperty(name)) {
+      throw new SyntaxError('addCommand: already has a command named \''
+        + name + '\'');
+    }
+    CommandStructure.help[name] = {
+      summary: summary,
+      format:  '',
+      details: details,
+    };
+    CommandStructure.commands[name] = fn;
+  },
+
+  makeDefaultHelpCommand: function (CommandStructure) {
+    return function (text, message) {
+      var strList = [];
+      var help = CommandStructure.help;
+      if (help.hasOwnProperty(text)) {
+        strList.push('**' + text + '**\n' +
+          help[text].summary + '\n' +
+          help[text].details);
+      } else {
+        Object.keys(help).forEach(function (command) {
+          strList.push('**' + command + '** - ' + help[command].summary + '\n');
+        });
+      }
+      utils.massMessage(strList, message.channel);
+    };
+  },
+
+  helpCommand: function () {
+  },
+
+
 
   /**
    * @typedef {object} loader
