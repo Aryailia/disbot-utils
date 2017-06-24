@@ -135,13 +135,15 @@ function massMessage(messageList, channel) {
 /**
  * @param {function(string, CommandStructure):boolean} runBeforeCommands IF
  * true, will continue to run the command. Run before every command
+ * @param {string} prefix Prefix to show for documentation
  * @returns {CommandStructure}
  */
-function setupCommand(runBeforeCommands) {
+function setupCommand(runBeforeCommands, prefix) {
   var setup = runBeforeCommands == undefined
     ? function () { return true; }
     : runBeforeCommands;
   var CommandStructure = {
+    prefix: prefix == undefined ? '' : prefix,
     tags: {},
     commands: {},
     help: {},
@@ -199,11 +201,12 @@ function addCommand(CommandStructure, name, tagList, format, summary, details, f
 function makeDefaultHelpCommand(CommandStructure, isStrict, isPrintCombinations) {
   return function (text, message) {
     var helpStruct = CommandStructure.help;
+    var prefix = CommandStructure.prefix;
     var strList = [];
 
     if (helpStruct.hasOwnProperty(text)) {
-      strList.push('**' + text + '**' + helpStruct[text].format + '\n' +
-        helpStruct[text].details);
+      strList.push('**' + prefix + text + '**' +
+        helpStruct[text].format + '\n' + helpStruct[text].details);
     } else {
       var tagStruct = CommandStructure.tags;
       var isAvailable = {}; // For deleting used commands
@@ -265,8 +268,9 @@ function makeDefaultHelpCommand(CommandStructure, isStrict, isPrintCombinations)
           strList.push('**' + tag + '**\n');
           values.forEach(function (command) {
             if (isAvailable[command]) {
-              strList.push('**' + command + '** - '
-                + helpStruct[command].summary + '\n');
+            console.log(helpStruct[command]);
+              strList.push('**' + prefix + command + '** - ' +
+                helpStruct[command].summary + '\n');
             }
             
             if (isStrict) {
