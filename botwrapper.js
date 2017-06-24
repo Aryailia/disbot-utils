@@ -21,48 +21,7 @@ var utils = {
     return new RegExp('^'+prefix+'(\\S+)(?:'+separator+'*([\\S\\s]+))?$');
   },
 
-  /**
-   * Outputs lists of messages with the a buffer limit in mind. Prioritizes
-   * that individual elements of messageList be kept together, then
-   * prioritizes that each of those elments be seperated across newlines
-   * if the limit is exceeded. Otherwise combines as many messages as will
-   * fit within the buffer limit.
-   * 
-   * Buffer size limit provided by {DISCORD_MESSAGE_LIMIT}
-   * 
-   * @param {Array<string>} messageList Output
-   * @param {TextChannel} channel Channel with send method, has to be channel
-   * otherwise will run into problems with the channel calling {this}
-   */
-  massMessage: function (messageList, channel) {
-    if (typeof messageList !== 'object' || !messageList.hasOwnProperty('length')) {
-      throw new SyntaxError('Error: massMessage - expects an Array for {messageList}');
-    }
-    messageList
-      // Refine list separation to prioritize messageList boundaries but fit into limit
-      .reduce(fitIntoLimit, [{ size: 0, buffer: []}]) // Combine what will fit into a limit
-      .reduce(function (list, x) { return list.concat(x.buffer); }, []) // Flatten
-
-      // Refine list separation to prioritize newlines
-      .map(function (messages) {
-        var group = messages.split('\n') // Split along new lines
-          .reduce(fitIntoLimit, [{ size: 0, buffer: []}]); // Combine if limit allows
-        return group.map(function (newLineGroup) { 
-          return newLineGroup.buffer.join(''); // Then flatten into string
-        }); // return Array<Array<strings>>
-      })
-      .reduce(function (list, x) { return list.concat(x); }, []) // Flatten
-
-      // Display
-      .forEach(function (message) {
-        var index = 0;
-        var length = message.length;
-        while (index < length) { // Not guarenteed to be under limit still
-          channel.send(message.substr(index, DISCORD_MESSAGE_LIMIT));
-          index += DISCORD_MESSAGE_LIMIT;
-        }
-      });
-  },
+  massMessage: massMessage,
 
 
   /**
@@ -136,8 +95,6 @@ var utils = {
    * @param {boolean} strict
    */
   makeDefaultHelpCommand: function (CommandStructure, isStrict, isPrintCombinations) {
-    
-
     return function (text, message) {
       var helpStruct = CommandStructure.help;
       var strList = [];
@@ -303,16 +260,60 @@ var utils = {
   },
 };
 
-function fitIntoLimit(lines, text) {
-  var message = text + '\n';
-  var last = lines[lines.length - 1];
-  if (last.size <= DISCORD_MESSAGE_LIMIT) {
-    last.buffer.push(message);
-    last.size += message.length;
-  } else {
-    lines.push({ size: message.length, buffer: [message] });
+/**
+ * Outputs lists of messages with the a buffer limit in mind. Prioritizes
+ * that individual elements of messageList be kept together, then
+ * prioritizes that each of those elments be seperated across newlines
+ * if the limit is exceeded. Otherwise combines as many messages as will
+ * fit within the buffer limit.
+ * 
+ * Buffer size limit provided by {DISCORD_MESSAGE_LIMIT}
+ * 
+ * @param {Array<string>} messageList Output
+ * @param {TextChannel} channel Channel with send method, has to be channel
+ * otherwise will run into problems with the channel calling {this}
+ */
+function massMessage(messageList, channel) {
+  if (typeof messageList !== 'object' || !messageList.hasOwnProperty('length')) {
+    throw new SyntaxError('massMessage: expects an Array for {messageList}');
   }
-  return lines;
+  messageList
+    // Breakup any entries along their any newlies
+    .reduce(function (list, x) { 
+      var lines = x.split('\n');
+      var last = lines.pop(); // Dd not add any newlines not already present
+      var cons = lines.map(function (x) { return x + '\n'; });
+      return list.concat(cons).concat([last]);
+    }, [])
+    // Combine what will fit into a limit
+    .reduce(function (lines, text) {
+      var last = lines[lines.length - 1];
+      if (last.size <= DISCORD_MESSAGE_LIMIT) {
+        last.buffer.push(text);
+        last.size += text.length;
+      } else {
+        lines.push({ size: text.length, buffer: [text] });
+      }
+      return lines;
+    }, [{ size: 0, buffer: []}])
+    // Flatten from array of buffers to array
+    .reduce(function (list, obj) {
+      list.push(obj.buffer.join('')); // also join buffer into string
+      return list;
+    }, [])
+    // Display
+    .forEach(function (message) {
+      var index = 0;
+      var length = message.length;
+      while (index < length) { // Not guarenteed to be under limit still
+        channel.send(message.substr(index, DISCORD_MESSAGE_LIMIT));
+        index += DISCORD_MESSAGE_LIMIT;
+      }
+    });
+}
+
+function _fitIntoLimit(lines, text) {
+
 }
 
 function staticLoad(isDev, codeContainer, path) {
