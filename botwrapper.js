@@ -229,9 +229,9 @@ function makeDefaultHelpCommand(CommandStructure, isStrict, isPrintCombinations)
           // Each time {str} grows, add a new entry
           helpStruct[command].tags
             .map(function (tag) { return indexedTags[tag]; })
-            .sort(function (a, b) { return a - b; }) // least to greatest
+            .sort(function (a, b) { return a - b; }) // Least to greatest
             .forEach(function (tag) {
-              key += '.' + tag;
+              key += '.' + tag; // Grow key
               if (!headers.hasOwnProperty(key)) { headers[key] = []; }
               headers[key].push(command);
             });
@@ -246,12 +246,15 @@ function makeDefaultHelpCommand(CommandStructure, isStrict, isPrintCombinations)
           }).forEach(function (combination) {
             var list = combination.substr(1).split('.')
               .map(function (index) { return sortedTags[index]; });
-            var last = list.pop();
-            var expandedTag = (list.join(', ') +
-              (list.length > 1 ?  ',' : '') + // Serial comma
-              (list.length > 0 ? ' and ' : '') +
-              last);
+            var expandedTag = list.join(', '); // Just join them version
             
+            // Serial comma version
+            //var last = list.pop();
+            //var expandedTag = (list.join(', ') +
+            //  (list.length > 1 ?  ',' : '') + // Serial comma
+            //  (list.length > 0 ? ' and ' : '') +
+            //  last);
+
             tagKeys.push(expandedTag);
             tagValues[expandedTag] = headers[combination];
           });
@@ -260,7 +263,7 @@ function makeDefaultHelpCommand(CommandStructure, isStrict, isPrintCombinations)
         tagValues = CommandStructure.tags;
       }
       
-      // Display
+      // Display from {tagKeys} and {tagValues}
       tagKeys.forEach(function (tag) {
         // If commandList still has one of the commands
         var values = tagValues[tag];
@@ -268,14 +271,11 @@ function makeDefaultHelpCommand(CommandStructure, isStrict, isPrintCombinations)
           strList.push('**' + tag + '**\n');
           values.forEach(function (command) {
             if (isAvailable[command]) {
-            console.log(helpStruct[command]);
               strList.push('**' + prefix + command + '** - ' +
                 helpStruct[command].summary + '\n');
             }
-            
-            if (isStrict) {
-              delete isAvailable[command];
-            }
+            // Remove since already displayed
+            if (isStrict) { delete isAvailable[command]; }
           });
           strList.push('\n');
         }
