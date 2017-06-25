@@ -22,7 +22,7 @@ var utils = {
   },
   strictDefaults: strictDefaults,
   massMessage: massMessage,
-  setupCommand: setupCommand,
+  setupCommands: setupCommands,
   addCommand: addCommand,
   makeDefaultHelpCommand: makeDefaultHelpCommand,
   conditionalLoader: conditionalLoader,
@@ -128,7 +128,7 @@ function massMessage(messageList, channel) {
  * @param {string} prefix Prefix to show for documentation
  * @returns {CommandStructure}
  */
-function setupCommand(runBeforeCommands, prefix) {
+function setupCommands(runBeforeCommands, prefix) {
   var setup = runBeforeCommands == undefined
     ? function () { return true; }
     : runBeforeCommands;
