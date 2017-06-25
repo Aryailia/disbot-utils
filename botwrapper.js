@@ -46,30 +46,20 @@ var utils = {
  * @param {object} overwrites The values to overwrite with
  * @returns {object}
  */
-function strictDefaults(outlineDefaults, overwrites) {
-  var toAdd = overwrites == undefined ? {} : overwrites;
-  var obj = Object.create(null);
-  // If I want to change to non-mutating
-  //var check = Object.create(null); // To see if {overwrites} has extra keys
-  //Object.keys(overwrites).forEach(function (key) { check[key] = true; });
-  Object.keys(outlineDefaults).forEach(function (key) {
-    var base = toAdd.hasOwnProperty(key)
-      ? toAdd[key]
-      : outlineDefaults[key];
-    // Shallow copies any entries
-    // Note tha
-    obj[key] = typeof base === 'object'
-      ? Object.assign(base.constructor(), toAdd[key]) // One-level deep clone
-      : base; // Or just straight copy
-    //delete check[key]; // If I want to change to non-mutating
-    delete toAdd[key];
+function strictDefaults(defaults, toSet) {
+  var obj = defaults.constructor();
+  Object.keys(defaults).forEach(function (key) {
+    obj[key] = typeof defaults[key] === 'object'
+      ? defaults[key].constructor() : defaults[key];
   });
-
-  // See if any un-copied properties are left over
-  //if (Object.keys(check).length > 0) { // If I want to change to non-mutating
-  if (Object.keys(toAdd).length > 0) {
-    throw new Error('{overwrites} passed with invalid arguments' + toAdd);
-  }
+  Object.keys(toSet).forEach(function (key) {
+    if (obj.hasOwnProperty(key)) {
+      obj[key] = toSet[key];
+    } else {
+      throw new Error('strictDefaults() - \'' + key +
+        '\' is not a valid property for {toSet}');
+    }
+  });
   return obj;
 }
 
