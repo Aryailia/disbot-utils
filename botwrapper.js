@@ -337,7 +337,7 @@ function defaultHelp(CommandStructure, isStrict, isCombine, name, channel) {
       // If commandList still has one of the commands
       var values = tagValues[tag];
       if (values.some(function (x) { return isAvailable[x]; })) {
-        strList.push('**' + tag + '**\n');
+        strList.push('__**' + tag + '**__\n');
         values.forEach(function (command) {
           if (isAvailable[command]) {
             strList.push('**' + prefix + command + '** - ' +
