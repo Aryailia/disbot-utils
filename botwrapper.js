@@ -24,7 +24,7 @@ var utils = {
   massMessage: massMessage,
   setupCommands: setupCommands,
   addCommand: addCommand,
-  makeDefaultHelpCommand: makeDefaultHelpCommand,
+  defaultHelp: defaultHelp,
   conditionalLoader: conditionalLoader,
 };
 
@@ -182,97 +182,165 @@ function addCommand(CommandStructure, name, tagList, format, summary, details, f
 }
 
 /**
- * @param {CommandStructure} CommandStructure
- * @param {object} CommandStructure.tags
+ * Prints help information. If a valid command name is passed to {name}
+ * it'll display the prefix, command, its format, and the detailed information
+ * for that command. If no valid command is passed it'll display the general
+ * help information.
+ * 
+ * General help lists all the commands and their associated sumamries by
+ * grouping them into categories specified by {CommandStructure.tags}. Since
+ * commands can have multiple tags, if {isStrict} is set to false, this will
+ * display the command for each tag it is labelled under.
+ * {isPrintCombinations} enumerates all the combinations of tags rather than
+ * just listing them one by one. (So N choose 1 to N to use probability speak
+ * for all present combinations.) These are arranged by most tags first, then
+ * alphabetically.
+ * 
+ * Also note, everything is case sensitive.
+ * 
+ * @example
+ * command1 has tags ['Tag A', 'Tag B']
+ * command2 has tags ['Tag A']
+ * command3 had tags ['Tag B']
+ * 
+ * @example (isStrict = true, isPrintCombinations = true) =>
+ * Tag A, Tag B
+ * command1
+ * 
+ * Tag A
+ * command2
+ * 
+ * Tag B
+ * command3
+ * 
+ * @example (isStrict = false, isPrintCombinations = true) =>
+ * Tag A, Tag B
+ * command1
+ * command2
+ * 
+ * Tag A
+ * command1
+ * command2
+ * 
+ * Tag B
+ * command1
+ * command3
+ * 
+ * @example (isStrict = true, isPrintCombinations = false) =>
+ * Tag A
+ * command1
+ * command2
+ * 
+ * Tag B
+ * command3
+ * 
+ * @example (isStrict = false, isPrintCombinations = false) =>
+ * Tag A
+ * command1
+ * command2
+ * 
+ * Tag B
+ * command1
+ * command3
+ *  
+ * 
+ * @param {CommandStructure} CommandStructure Made by setupCommands, but
+ * nothing particularly special about it other than it tags, commands, and
+ * help as properties which this will search
+ * @param {object} CommandStructure.tags 
  * @param {object} CommandStructure.commands
  * @param {object} CommandStructure.help
- * @param {boolean} strict
+ * @param {boolean} isStrict True if print a command only once for the first
+ * category it is in. False if it prints for every category it is part of
+ * @param {boolean} isPrintCombinations evaluate all combinations of
+ * categories. 
+ * @param {string} name Name of the command, you may want to .tolowerCase this
+ * @param {object} channel the channel to send to
+ * @returns {Promise} normal output
  */
-function makeDefaultHelpCommand(CommandStructure, isStrict, isPrintCombinations) {
-  return function (text, message) {
-    var helpStruct = CommandStructure.help;
-    var prefix = CommandStructure.prefix;
-    var strList = [];
+function defaultHelp(CommandStructure, isStrict, isPrintCombinations, name, channel) {
+  var helpStruct = CommandStructure.help;
+  var prefix = CommandStructure.prefix;
+  var strList = [];
 
-    if (helpStruct.hasOwnProperty(text)) {
-      strList.push('**' + prefix + text + '**' +
-        helpStruct[text].format + '\n' + helpStruct[text].details);
-    } else {
-      var tagStruct = CommandStructure.tags;
-      var isAvailable = {}; // For deleting used commands
-      var indexedTags = {};
-      var headers = {};
-      var sortedTags = Object.keys(tagStruct).sort();
-      var tagKeys, tagValues; // Keys = tag clusters, values = commands
+  if (helpStruct.hasOwnProperty(name)) {
+    strList.push('**' + prefix + name + '**' +
+      helpStruct[name].format + '\n' + helpStruct[name].details);
+  } else {
+    var tagStruct = CommandStructure.tags;
+    var isAvailable = {}; // For deleting used commands
+    var indexedTags = {};
+    var headers = {};
+    var sortedTags = Object.keys(tagStruct).sort();
+    var tagKeys, tagValues; // Keys = tag clusters, values = commands
 
-      Object.keys(helpStruct).forEach(function (command) {
-        isAvailable[command] = true;  // Populate {commandList}
-      });
+    Object.keys(helpStruct).forEach(function (command) {
+      isAvailable[command] = true;  // Populate {commandList}
+    });
 
-      if (isPrintCombinations) { // List by all combinations of tags
-        // Invert {sortedTags}. {indexedTags} is the index of SortedTags
-        sortedTags.forEach(function (tag, i) { indexedTags[tag] = i; });
-        
-        // Adds all unordered combinations of tags to {headers}
-        Object.keys(helpStruct).forEach(function (command) { // Populate {headers}
-          var key = ''; // The key of {headers}
-          // Each time {str} grows, add a new entry
-          helpStruct[command].tags
-            .map(function (tag) { return indexedTags[tag]; })
-            .sort(function (a, b) { return a - b; }) // Least to greatest
-            .forEach(function (tag) {
-              key += '.' + tag; // Grow key
-              if (!headers.hasOwnProperty(key)) { headers[key] = []; }
-              headers[key].push(command);
-            });
-        });
-
-        tagKeys = [];
-        tagValues = {};
-        Object.keys(headers) // Populate tagStruct
-          .sort(function (a, b) { // Longest first, then alphabetically
-            var difference = b.split('.').length - a.split('.').length;
-            return difference === 0 ? a > b : difference;
-          }).forEach(function (combination) {
-            var list = combination.substr(1).split('.')
-              .map(function (index) { return sortedTags[index]; });
-            var expandedTag = list.join(', '); // Just join them version
-            
-            // Serial comma version
-            //var last = list.pop();
-            //var expandedTag = (list.join(', ') +
-            //  (list.length > 1 ?  ',' : '') + // Serial comma
-            //  (list.length > 0 ? ' and ' : '') +
-            //  last);
-
-            tagKeys.push(expandedTag);
-            tagValues[expandedTag] = headers[combination];
-          });
-      } else { // Or just list by tags sorted alphabetically
-        tagKeys = sortedTags;
-        tagValues = CommandStructure.tags;
-      }
+    if (isPrintCombinations) { // List by all combinations of tags
+      // Invert {sortedTags}. {indexedTags} is the index of SortedTags
+      sortedTags.forEach(function (tag, i) { indexedTags[tag] = i; });
       
-      // Display from {tagKeys} and {tagValues}
-      tagKeys.forEach(function (tag) {
-        // If commandList still has one of the commands
-        var values = tagValues[tag];
-        if (values.some(function (x) { return isAvailable[x]; })) {
-          strList.push('**' + tag + '**\n');
-          values.forEach(function (command) {
-            if (isAvailable[command]) {
-              strList.push('**' + prefix + command + '** - ' +
-                helpStruct[command].summary + '\n');
-            }
-            // Remove since already displayed
-            if (isStrict) { delete isAvailable[command]; }
+      // Adds all unordered combinations of tags to {headers}
+      Object.keys(helpStruct).forEach(function (command) { // Populate {headers}
+        var key = ''; // The key of {headers}
+        // Each time {str} grows, add a new entry
+        helpStruct[command].tags
+          .map(function (tag) { return indexedTags[tag]; })
+          .sort(function (a, b) { return a - b; }) // Least to greatest
+          .forEach(function (tag) {
+            key += '.' + tag; // Grow key
+            if (!headers.hasOwnProperty(key)) { headers[key] = []; }
+            headers[key].push(command);
           });
-          strList.push('\n');
-        }
       });
+
+      tagKeys = [];
+      tagValues = {};
+      Object.keys(headers) // Populate tagStruct
+        .sort(function (a, b) { // Longest first, then alphabetically
+          var difference = b.split('.').length - a.split('.').length;
+          return difference === 0 ? a > b : difference;
+        }).forEach(function (combination) {
+          var list = combination.substr(1).split('.')
+            .map(function (index) { return sortedTags[index]; });
+          var expandedTag = list.join(', '); // Just join them version
+          
+          // Serial comma version
+          //var last = list.pop();
+          //var expandedTag = (list.join(', ') +
+          //  (list.length > 1 ?  ',' : '') + // Serial comma
+          //  (list.length > 0 ? ' and ' : '') +
+          //  last);
+
+          tagKeys.push(expandedTag);
+          tagValues[expandedTag] = headers[combination];
+        });
+    } else { // Or just list by tags sorted alphabetically
+      tagKeys = sortedTags;
+      tagValues = CommandStructure.tags;
     }
-    utils.massMessage(strList, message.channel);
-  };
+    
+    // Display from {tagKeys} and {tagValues}
+    tagKeys.forEach(function (tag) {
+      // If commandList still has one of the commands
+      var values = tagValues[tag];
+      if (values.some(function (x) { return isAvailable[x]; })) {
+        strList.push('**' + tag + '**\n');
+        values.forEach(function (command) {
+          if (isAvailable[command]) {
+            strList.push('**' + prefix + command + '** - ' +
+              helpStruct[command].summary + '\n');
+          }
+          // Remove since already displayed
+          if (isStrict) { delete isAvailable[command]; }
+        });
+        strList.push('\n');
+      }
+    });
+  }
+  utils.massMessage(strList, channel);
 }
 
 
