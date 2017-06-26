@@ -123,25 +123,30 @@ function massMessage(messageList, channel) {
  * @property {function(string, Array<string>, string, string, function)} addCommand
  */
 /**
- * @param {function(string, CommandStructure):boolean} runBeforeCommands IF
- * true, will continue to run the command. Run before every command
+ * @param {function(CommandStructure, string, object):boolean} commandPreCheck
+ * If true, will continue to run the command. Run before every command
  * @param {string} prefix Prefix to show for documentation
  * @returns {CommandStructure}
  */
-function setupCommands(runBeforeCommands, prefix) {
-  var setup = runBeforeCommands == undefined
+function setupCommands(commandPreCheck, prefix) {
+  var setup = commandPreCheck == undefined
     ? function () { return true; }
-    : runBeforeCommands;
+    : commandPreCheck;
   var CommandStructure = {
     prefix: prefix == undefined ? '' : prefix,
     tags: {},
     commands: {},
     help: {},
     addCommand: function (name) {
-      if (setup(CommandStructure, name)) {
-        utils.addCommand.apply(null, [CommandStructure].concat(
-          Array.prototype.slice.call(arguments)));
-      }
+      var setupArgs = Array.prototype.slice.call(arguments);
+      var fn = setupArgs.pop();
+      setupArgs[setupArgs.length] = function () {
+        var commandArgs = Array.prototype.slice.call(arguments);
+        if (setup.apply(null, [CommandStructure, name].concat(commandArgs))) {
+          fn.apply(null, commandArgs);
+        }
+      };
+      utils.addCommand.apply(null, [CommandStructure].concat(setupArgs));
     },
   };
   return CommandStructure;
@@ -252,20 +257,25 @@ function addCommand(CommandStructure, name, tagList, format, summary, details, f
  * @param {object} CommandStructure.help
  * @param {boolean} isStrict True if print a command only once for the first
  * category it is in. False if it prints for every category it is part of
- * @param {boolean} isPrintCombinations evaluate all combinations of
+ * @param {boolean} isCombine evaluate all combinations of
  * categories. 
  * @param {string} name Name of the command, you may want to .tolowerCase this
+ * If the command is not on the list it displays a not found message.
  * @param {object} channel the channel to send to
  * @returns {Promise} normal output
  */
-function defaultHelp(CommandStructure, isStrict, isPrintCombinations, name, channel) {
+function defaultHelp(CommandStructure, isStrict, isCombine, name, channel) {
+  var commandName = String(name);
   var helpStruct = CommandStructure.help;
   var prefix = CommandStructure.prefix;
   var strList = [];
 
-  if (helpStruct.hasOwnProperty(name)) {
-    strList.push('**' + prefix + name + '**' +
-      helpStruct[name].format + '\n' + helpStruct[name].details);
+  if (helpStruct.hasOwnProperty(commandName)) {
+    strList.push('**' + prefix + commandName + '**' +
+      helpStruct[commandName].format + '\n' + helpStruct[commandName].details);
+  } else if (commandName !== '') {
+    strList.push('The command **' + prefix + commandName + '** is unavailable.');
+    strList.push('Try typing **' + prefix + 'help** instead');
   } else {
     var tagStruct = CommandStructure.tags;
     var isAvailable = {}; // For deleting used commands
@@ -278,7 +288,7 @@ function defaultHelp(CommandStructure, isStrict, isPrintCombinations, name, chan
       isAvailable[command] = true;  // Populate {commandList}
     });
 
-    if (isPrintCombinations) { // List by all combinations of tags
+    if (isCombine) { // List by all combinations of tags
       // Invert {sortedTags}. {indexedTags} is the index of SortedTags
       sortedTags.forEach(function (tag, i) { indexedTags[tag] = i; });
       
