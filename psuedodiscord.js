@@ -19,10 +19,13 @@ function _null() {
  * @param {string} text Text of message to send
  */
 function messageFactory(state, text) {
-  const line = text.replace(/\s*$/,'');
+  const line = String(text).replace(/\s*$/,'');
   return {
     channel: {
       send: state.send,
+      guild: {
+        id: Symbol()
+      },
     },
     author: {
       id: USER_ID
