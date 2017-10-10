@@ -20,7 +20,7 @@ function mix(privates, fn) {
  * @param {string} prefix Prefix to show for documentation
  * @returns {CommandStructure}
  */
-function setupCommands(commandPreCheck, prefix) {
+function makeLibrary(commandPreCheck, prefix) {
   var preCheck = commandPreCheck == undefined
     ? function () { return true; }
     : commandPreCheck;
@@ -285,6 +285,4 @@ function defaultHelp(CommandStructure, isStrict, isCombine, name, channel) {
   utils.massMessage(strList, channel);
 }
 
-module.exports = {
-  setupCommands: setupCommands,
-};
+module.exports = makeLibrary;

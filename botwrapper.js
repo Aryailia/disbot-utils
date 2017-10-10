@@ -8,10 +8,7 @@ var package = {
   validateParseCommand: utils.validateParseCommand,
   strictDefaults: utils.strictDefaults,
   massMessage: discordFacade.massMessage,
-  setupCommands: commandLibrary.setupCommands,
-  // setupCommands: commandLibrary.setupCommands,
-  // addCommand: commandLibrary.addCommand,
-  // defaultHelp: commandLibrary.defaultHelp,
+  makeLibrary: commandLibrary,
   conditionalLoader: conditionalLodaer,  
 };
 
