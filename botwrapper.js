@@ -1,6 +1,6 @@
 var utils = require('./src/utils.js');
 var discordFacade = require('./src/facade.js');
-var commandLibrary = require('./src/monad.js');
+var commandLibrary = require('./src/commands.js');
 var conditionalLodaer = require('./src/loader.js');
 
 var package = {
