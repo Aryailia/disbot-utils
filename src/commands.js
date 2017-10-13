@@ -1,118 +1,176 @@
 var utils = require('./facade.js');
 
-
-function mix(privates, fn) {
-  return function () {
-    var args = Array.prototype.slice.call(arguments);
-    return fn.apply(null, privates.concat(args));
-  }
-};
-
 /**
- * @typedef {object} CommandStructure
- * @property {object} commands
- * @property {object} help
- * @property {function(string, Array<string>, string, string, function)} addCommand
+ * TODO:
+ * make a destroy method
+ * unit tests
  */
-/**
- * @param {function(CommandStructure, string, object):boolean} commandPreCheck
- * If true, will continue to run the command. Run before every command
- * @param {string} prefix Prefix to show for documentation
- * @returns {CommandStructure}
- */
-function makeLibrary(commandPreCheck, prefix) {
-  var preCheck = commandPreCheck == undefined
-    ? function () { return true; }
-    : commandPreCheck;
+// @property {function(string, Array<string>, string, string, function)} addCommand
 
-  var privates = {
-    prefix: prefix == undefined ? '' : prefix,
-    tags: {},
-    commands: {},
-    help: {},
-    permissions: {},
-    init: preCheck,
-  };
-  var methods = {
-    addCommand: mix([privates], addCommand),
-    defaultHelp: mix([privates], defaultHelp),
-    mergeTo: function (library) {
-      library._mergeFrom(privates);
-    },
-    _mergeFrom: function (source) {
-      var target = privates;
-      Object.keys(source.commands).forEach(function (key) {
-        if (target.commands.hasOwnProperty(name)) {
-          throw new SyntaxError('merge: Command conflict \'' + name + '\'');
-        } else {
-          target.tags[key] = source.tags[key];
-          target.commands[key] = source.commands[key];
-          target.help[key] = source.help[key];
-        }
-      });
-    },
-    run: function (name) {
-      var args = Array.prototype.slice.call(arguments, 1);
-      if (privates.commands.hasOwnProperty(name)) {
-        privates.commands[name].apply(null, args);
-      }
+var toExport = {
+  PERM_TYPE_USER: 1,
+  PERM_TYPE_ROLE: 2,
+  PERM_TYPE_PERM: 3,
+  PERM_LEVEL_PREVENT: -1,
+  PERM_LEVEL_NOACCESS: 0,
+
+  /**
+   * @param {function(CommandStructure, string, object):boolean} commandPreCheck
+   * If true, will continue to run the command. Run before every command
+   * @param {string} prefix Prefix to show for documentation
+   * @returns {CommandStructure}
+   */
+  makeLibrary: function (commandPreCheck, prefix) {
+    var preCheck = commandPreCheck == undefined
+      ? function () { return true; }
+      : commandPreCheck;
   
-    },
-    defaultHelp: function (isStrict, isCombine, name, channel) {
-      defaultHelp(privates, isStrict, isCombine, name, channel);
-    },
-  };
-
-  return methods;
-  // return new testing();
-}
-
-class testing {
-  constructor() {}
-  hello() {}
-
+    var privates = {
+      prefix: prefix == undefined ? '' : prefix,
+      tags: {},
+      commands: {},
+      help: {},
+      permissions: {},
+      init: preCheck,
+    };
+  
+    // Mix in methods of library
+    var library = Object.create(null);
+    Object.keys(mixin).forEach(function (key) {
+      library[key] = function () {
+        var args = Array.prototype.slice.call(arguments);
+        return mixin[key].apply(null, [privates].concat(args));
+      };
+    });
+  
+    return library;
+  },
 };
 
+var mixin = {
+  addCommand: addCommand,
+
+  defaultHelp: defaultHelp,
+
+  mergeTo: function (privates, library) {
+    library._mergeFrom(privates);
+  },
+
+  _mergeFrom: function (target, source) {
+    Object.keys(source.commands).forEach(function (key) {
+      if (target.commands.hasOwnProperty(name)) {
+        throw new SyntaxError('merge: Command conflict \'' + name + '\'');
+      } else {
+        target.tags[key] = source.tags[key];
+        target.commands[key] = source.commands[key];
+        target.help[key] = source.help[key];
+      }
+    });
+  },
+
+  run: function (privates, name) {
+    var args = Array.prototype.slice.call(arguments, 2);
+    if (privates.commands.hasOwnProperty(name)) {
+      privates.commands[name].apply(null, args);
+    }
+
+  },
+  
+  defaultHelp: defaultHelp,
+
+  findPermissionLevel: function (privates, command, author, member) {
+    const USER = toExport.PERM_TYPE_USER;
+    const ROLE = toExport.PERM_TYPE_ROLE;
+    const PERM = toExport.PERM_TYPE_PERM;
+    const DEFAULT_LEVEL = 0;
+    const parser = function (type, value, level) {
+      var t;
+      switch (type) {
+        case USER: t = value === author.id; break;
+        case ROLE: t = member.roles.some(role => value === role.id); break;
+        case PERM: t = member.hasPermission(value, false, false, false); break;
+        default:   t = false;
+      }
+      return t ? level : DEFAULT_LEVEL;
+    };
+
+    const levels = mixin.fMapPermissions(privates, command, parser);
+    // Find the highest permission level, or if ever
+    return levels.reduce(function (acc, value) {
+      if (acc === -1 || value === -1) { // If disallowed then always false
+        return -1;
+      } else if (value >= acc) { 
+        return value;
+      } else {
+        return acc;
+      }
+    }, 0);
+
+  },
+
+  fMapPermissions: function (privates, name, fn) {
+    var list = privates.permissions[name];
+    var len = list.length;
+    var target = new Array(len);
+    var elem;
+    for (var i = 0; i < len; ++i) {
+      elem = list[i];
+      target[i] = fn(elem.type, elem.id, elem.level);
+    }
+    return target;
+  },
+
+  fSomePermissions: function (privates, name, fn) {
+    var list = privates.permissions[name];
+    var len = list.length;
+    var elem;
+    for (var i = 0; i < len; ++i) {
+      elem = list[i];
+      if (fn(elem.type, elem.id, elem.level)) {
+        return true;
+      }
+    }
+    return false;
+  }, 
+};
 
 /**
- * @param {CommandStructure} CommandStructure
- * @param {object} CommandStructure.tags
- * @param {object} CommandStructure.commands
- * @param {object} CommandStructure.help
- * @param {string} name
- * @param {Array<string>} tagList
- * @param {string} format
+ * @param {string} name command
+ * @param {Array<string>} tagList list of labels for organizing help
+ * @param {string} format 
  * @param {string} summary
  * @param {string} details
  * @param {Object} permissions
  * @param {function:void} fn
  */
-function addCommand(CommandStructure, name,
-  tagList, format, summary, details, permissions, fn)
+function addCommand(library, name, tagList,
+    format, summary, details, permissions, fn)
 {
   tagList.forEach(function (tag) {
-    if (!CommandStructure.tags.hasOwnProperty(tag)) {
-      CommandStructure.tags[tag] = [];
+    if (!library.tags.hasOwnProperty(tag)) {
+      library.tags[tag] = [];
     }
-    CommandStructure.tags[tag].push(name);
+    library.tags[tag].push(name);
   });
 
-  if (CommandStructure.help.hasOwnProperty(name) ||
-      CommandStructure.commands.hasOwnProperty(name)) {
+  if (library.help.hasOwnProperty(name) ||
+      library.commands.hasOwnProperty(name)) {
     throw new SyntaxError('addCommand: already has a command named \''
       + name + '\'');
   }
-  CommandStructure.help[name] = {
+  library.help[name] = {
     summary: summary,
     format:  format,
     details: details,
     tags: tagList,
   };
-  CommandStructure.commands[name] = function () {
+  library.permissions[name] = permissions;
+
+  library.commands[name] = function () {
     var commandArgs = Array.prototype.slice.call(arguments);
-    var init = CommandStructure.init; // Always run before a command
+    var init = library.init; // Always run before a command
     // Only continue with execution if init() tests true
-    if (init.apply(null, [CommandStructure, name].concat(commandArgs))) {
+    if (init.apply(null, [library, name].concat(commandArgs))) {
       fn.apply(null, commandArgs);
     }
   };
@@ -285,4 +343,4 @@ function defaultHelp(CommandStructure, isStrict, isCombine, name, channel) {
   utils.massMessage(strList, channel);
 }
 
-module.exports = makeLibrary;
+module.exports = toExport;
