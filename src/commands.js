@@ -176,7 +176,7 @@ var mixin = {
     var elem;
     for (var i = 0; i < len; ++i) {
       elem = list[i];
-      target[i] = fn(elem.type, elem.id, elem.level);
+      target[i] = fn(elem.type, elem.value, elem.level);
     }
     return(target);
   },
@@ -187,7 +187,7 @@ var mixin = {
     var elem;
     for (var i = 0; i < len; ++i) {
       elem = list[i];
-      if (fn(elem.type, elem.id, elem.level)) {
+      if (fn(elem.type, elem.value, elem.level)) {
         return(true);
       }
     }
@@ -217,7 +217,7 @@ function findPermLevel(permissionsArray, author, member) {
     // The structure of {entry} (of {permissionsArray}) may change in the
     // future, so pulling out the variables now for easy modifying
     var type = entry.type;
-    var value = entry.id;
+    var value = entry.value;
     var level = entry.level;
 
     var t; // set boolean {t} depending on switch on {type}
