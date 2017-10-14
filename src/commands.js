@@ -123,10 +123,10 @@ var mixin = {
 
   _mergeFrom: function (target, source) {
     Object.keys(source.commands).forEach(function (key) {
-      if (target.commands.hasOwnProperty(name)) {
-        throw new SyntaxError('merge: Command conflict \'' + name + '\'');
+      if (target.commands.hasOwnProperty(key)) {
+        throw new SyntaxError('merge: Command conflict \'' + key + '\'');
       } else {
-        target.tags[key] = source.tags[key];
+        target.permissions[key] = source.permissions[key];
         target.commands[key] = source.commands[key];
         target.help[key] = source.help[key];
       }
