@@ -8,11 +8,17 @@ var package = {
   validateParseCommand: utils.validateParseCommand,
   strictDefaults: utils.strictDefaults,
   massMessage: discordFacade.massMessage,
+  conditionalLoader: conditionalLodaer,  
+  
   makeLibrary: library.makeLibrary,
+  defaultHelp: library.defaultHelp,
+  findPermissionLevel: library.findPermissionLevel,
   PERM_TYPE_USER: library.PERM_TYPE_USER,
   PERM_TYPE_ROLE: library.PERM_TYPE_ROLE,
   PERM_TYPE_PERM: library.PERM_TYPE_PERM,
-  conditionalLoader: conditionalLodaer,  
+  PERM_LEVEL_DENY: library.PERM_LEVEL_DENY,
+  PERM_LEVEL_NEUTRAL: library.PERM_LEVEL_NEUTRAL,
 };
+
 
 module.exports = package;
