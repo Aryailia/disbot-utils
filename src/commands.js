@@ -31,6 +31,7 @@ var DEFAULT_LEVEL = PERM_LEVEL_NEUTRAL;
 
 var toExport = {
   PERM_TYPE_USER: 1,
+  PERM_TYPE_CHAN: 4, // Not working yet
   PERM_TYPE_ROLE: 2,
   PERM_TYPE_PERM: 3,
   PERM_LEVEL_DENY: PERM_LEVEL_DENY,
@@ -42,7 +43,7 @@ var toExport = {
   /**
    * Returns an object with all the methods of {mixin} (have to see source)
    * 
-   * @param {function(CommandLibrary, string, object):boolean} commandPreCheck
+   * @param {function(CommandLibrary, string, ...):boolean} commandPreCheck
    * If true, will continue to run the command. Run before every command
    * @param {string} prefix Prefix to show for documentation
    * 
@@ -112,8 +113,9 @@ var mixin = {
       var init = state.init; // Always run before a command
       // Only continue with execution if init() tests true
       if (init.apply(null, [state, name].concat(commandArgs))) {
-        fn.apply(null, commandArgs);
+        return fn.apply(null, commandArgs);
       }
+      return false;
     };
   },
 
@@ -133,6 +135,22 @@ var mixin = {
     });
   },
 
+  alias: function (state, cmd, original) {
+    if (mixin.hasCommand(state, original)) {
+      const summary = 'Alias of ' + cmd;
+      const {tags, format, details} = state.help[original];
+      const perms = state.permissions[original];
+      const fn = state.commands[original];
+      mixin.addCommand(state, cmd, tags, format, summary, details, perms, fn);
+    } else {
+      throw new SyntaxError('merge: Command conflict \'' + key + '\'');
+    }
+  },
+
+  hasCommand: function (state, name) {
+    return state.commands.hasOwnProperty(name);
+  },
+
   /**
    * Runs a command with name
    * @param {Object} state Private hash of variables that are appended on mix
@@ -141,9 +159,9 @@ var mixin = {
   run: function (state, name) {
     var args = Array.prototype.slice.call(arguments, 2); // Skip first two param
     if (state.commands.hasOwnProperty(name)) {
-      state.commands[name].apply(null, args);
+      return state.commands[name].apply(null, args);
     }
-
+    return false;
   },
   
   defaultHelp: function (state, channel, author, member, commandName,
@@ -207,10 +225,6 @@ var mixin = {
  * @param {Discord.GuildMember} member 
  */
 function findPermLevel(permissionsArray, author, member) {
-  var USER = toExport.PERM_TYPE_USER;
-  var ROLE = toExport.PERM_TYPE_ROLE;
-  var PERM = toExport.PERM_TYPE_PERM;
-
   // Convert {permissionsArray} to number for whether the user, indicated by
   // {author} and {member} meets that requirement. {DEFAULT_LEVEL} by default
   var levels = permissionsArray.map(function (entry) {
@@ -222,12 +236,14 @@ function findPermLevel(permissionsArray, author, member) {
 
     var t; // set boolean {t} depending on switch on {type}
     switch (type) {
-      case USER: t = value === author.id; break;
-      case ROLE: t = (member == null)
+      case toExport.PERM_TYPE_USER: t = value === author.id; break;
+      case toExport.PERM_TYPE_ROLE: t = (member == null)
         ? false // {member} is null When in private messages
         : member.roles.some(function (role) { return(value === role.id); });
-      break;
-      case PERM: t = member.hasPermission(value, false, false, false); break;
+        break;
+      case toExport.PERM_TYPE_CHAN: t = false; break;
+      case toExport.PERM_TYPE_PERM: t =
+        member.hasPermission(value, false, false, false); break;
       default:   t = false;
     }
     return(t ? level : DEFAULT_LEVEL);
@@ -308,7 +324,7 @@ function findPermLevel(permissionsArray, author, member) {
  * command3
  *  
  * @param {object} channel the channel to send to
- * @param {Discord.Member} author authorId of message for permissions
+ * @param {Discord.User} author author of message for permissions
  * @param {Discord.GuildMember} member {author}'s GuildMember object for perms
  * @param {string} cmdName Name of the command, you may want to .tolowerCase
  * If the command is not on the list it displays a not found message.
